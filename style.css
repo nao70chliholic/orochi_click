@@ -23,7 +23,18 @@ body {
 
 #timer {
     font-size: 3em;
+    margin-bottom: 10px; /* 少し調整 */
+}
+
+#break-time-container {
     margin-bottom: 20px;
+}
+
+#breakTimeInput {
+    width: 80px;
+    padding: 5px;
+    font-size: 1em;
+    text-align: center;
 }
 
 button {

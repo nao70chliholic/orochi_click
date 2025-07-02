@@ -2,37 +2,70 @@ const startButton = document.getElementById('startButton');
 const target = document.getElementById('target');
 const timerDisplay = document.getElementById('timer');
 const resultDisplay = document.getElementById('result');
+const breakTimeInput = document.getElementById('breakTimeInput');
+const breakTimeContainer = document.getElementById('break-time-container');
 
-let timer;
-const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
-let timeLeft = EIGHT_HOURS_IN_SECONDS;
-let gameStarted = false;
+const EIGHT_HOURS_IN_MS = 8 * 60 * 60 * 1000;
+let timerInterval;
 
-// 初期表示を更新
-timerDisplay.textContent = formatTime(timeLeft);
+// --- 初期化処理 ---
+window.addEventListener('load', initializeGame);
+breakTimeInput.addEventListener('input', updateInitialTimerDisplay);
 
-startButton.addEventListener('click', startGame);
+function initializeGame() {
+    const endTime = localStorage.getItem('endTime');
+    if (endTime) {
+        // 実行中のタイマーがある場合
+        breakTimeContainer.classList.add('hidden');
+        startButton.classList.add('hidden');
+        startTimer(parseInt(endTime, 10));
+    } else {
+        // 新規ゲームの場合
+        updateInitialTimerDisplay();
+    }
+}
 
-function startGame() {
-    if (gameStarted) return;
+function updateInitialTimerDisplay() {
+    const breakMinutes = parseInt(breakTimeInput.value, 10) || 0;
+    const totalSeconds = (EIGHT_HOURS_IN_MS / 1000) + (breakMinutes * 60);
+    timerDisplay.textContent = formatTime(totalSeconds);
+}
 
-    gameStarted = true;
-    timeLeft = EIGHT_HOURS_IN_SECONDS;
-    resultDisplay.textContent = '';
+// --- ゲーム開始処理 ---
+startButton.addEventListener('click', () => {
+    const breakMinutes = parseInt(breakTimeInput.value, 10) || 0;
+    const breakTimeInMs = breakMinutes * 60 * 1000;
+    const totalWorkTimeMs = EIGHT_HOURS_IN_MS + breakTimeInMs;
+
+    const startTime = new Date().getTime();
+    const endTime = startTime + totalWorkTimeMs;
+
+    localStorage.setItem('endTime', endTime);
+
+    breakTimeContainer.classList.add('hidden');
     startButton.classList.add('hidden');
-    timerDisplay.textContent = formatTime(timeLeft);
+    resultDisplay.textContent = '';
 
-    timer = setInterval(() => {
-        timeLeft--;
-        timerDisplay.textContent = formatTime(timeLeft);
+    startTimer(endTime);
+});
 
-        if (timeLeft <= 0) {
-            clearInterval(timer);
+// --- タイマー処理 ---
+function startTimer(endTime) {
+    timerInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const timeLeft = endTime - now;
+
+        if (timeLeft > 0) {
+            timerDisplay.textContent = formatTime(Math.ceil(timeLeft / 1000));
+        } else {
+            clearInterval(timerInterval);
+            timerDisplay.textContent = "00:00:00";
             showTarget();
         }
     }, 1000);
 }
 
+// --- クリックターゲット処理 ---
 function showTarget() {
     target.classList.remove('hidden');
     const targetTimer = setTimeout(() => {
@@ -47,8 +80,9 @@ function showTarget() {
     };
 }
 
+// --- ゲーム終了処理 ---
 function endGame(isSuccess) {
-    gameStarted = false;
+    localStorage.removeItem('endTime');
     if (isSuccess) {
         resultDisplay.textContent = '退勤成功！お疲れ様でした！';
         resultDisplay.style.color = 'green';
@@ -58,9 +92,13 @@ function endGame(isSuccess) {
     }
     startButton.textContent = 'もう一度勤務する';
     startButton.classList.remove('hidden');
+    breakTimeContainer.classList.remove('hidden');
+    updateInitialTimerDisplay(); // タイマー表示をリセット
 }
 
+// --- ユーティリティ ---
 function formatTime(seconds) {
+    if (seconds < 0) seconds = 0;
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
